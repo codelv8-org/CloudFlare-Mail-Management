@@ -43,6 +43,9 @@ jobs:
       - name: Test authentication, migrations and configuration
         run: npm run test:vps
 
+      - name: Verify LAN deployment scripts fail closed
+        run: node --test tests/deploy-lan.test.mjs
+
       - name: Build production application
         run: npm run build
 

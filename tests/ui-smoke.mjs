@@ -86,7 +86,11 @@ try {
   page.once('dialog', d => d.accept());
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'hidden' });
-  assert.equal(await page.getByRole('button', { name: 'เพิ่มรายการ', exact: true }).evaluate(el => el === document.activeElement), true);
+  // Dialog exit animations can finish after the element becomes hidden.
+  // Wait for focus restoration instead of asserting in the same event loop tick.
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some(
+    button => button.textContent?.trim() === 'เพิ่มรายการ' && button === document.activeElement
+  ), null, { timeout: 3000 });
   await page.getByRole('button', { name: 'การเชื่อมต่อ', exact: true }).click();
   await page.getByRole('heading', { name: 'Cloudflare API', exact: true }).waitFor();
   await page.screenshot({ path: join(directory, 'settings-desktop.png'), fullPage: true });
