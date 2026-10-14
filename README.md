@@ -42,6 +42,21 @@ pm2 save
 Production ต้องใช้ HTTPS และ Nginx reverse proxy ไป `127.0.0.1:3000`
 Cloudflare API Token ใช้จากหน้าเชื่อมต่อ ไม่ต้องใส่ Token ใน source
 
+## ตรวจสอบ UI และการทำงาน
+
+```bash
+npm run lint
+npm run test:vps
+npm run build
+npm run test:http
+npm run test:ui
+```
+
+`test:http` และ `test:ui` ใช้ SQLite ชั่วคราว ไม่แก้ฐานข้อมูลใช้งานจริง
+`test:ui` ต้องมี Playwright พร้อม Chromium ในเครื่อง หรือกำหนด `PLAYWRIGHT_PACKAGE_PATH` เป็นพาธไฟล์ `index.mjs` ของแพ็กเกจ Playwright ที่ติดตั้งไว้
+ภาพตรวจสอบจะอยู่ในโฟลเดอร์ชั่วคราวที่แสดงในผลการทดสอบ
+CRUD หมวดหมู่ตรวจด้วย API และ SQLite จริง ส่วน Cloudflare ใช้ข้อมูลจำลองสำหรับตรวจ UI โดยไม่เขียนบัญชีภายนอก
+
 ## ที่มาของโครงการ
 
 นำเข้าจาก Relaydesk บน ChatGPT Sites แล้วปรับ GitHub ให้ self-host ได้

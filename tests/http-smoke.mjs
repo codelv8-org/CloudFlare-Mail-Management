@@ -49,5 +49,16 @@ try {
   assert.equal(persisted.catalog.groups.some(x => x.id === 'smoke'), true);
   assert.equal((await fetch(base + '/api/auth/logout', { method: 'POST', headers: { Cookie: cookie, Origin: origin }, redirect: 'manual' })).status, 303);
   assert.equal((await fetch(base + '/api/state', { headers: { Cookie: cookie } })).status, 401);
+  // ตรวจว่าการจำกัดความถี่ยังทำงาน และพาผู้ใช้กลับไปอ่านข้อความในฟอร์ม
+  for (let i = 0; i < 9; i++) {
+    const denied = await fetch(base + '/api/auth/login', { method: 'POST', body: new URLSearchParams({ email: env.ADMIN_EMAIL, password: 'incorrect' }), headers: { Origin: origin }, redirect: 'manual' });
+    assert.equal(denied.status, 303);
+    assert.equal(new URL(denied.headers.get('location')).searchParams.get('error'), '1');
+  }
+  const throttled = await fetch(base + '/api/auth/login', { method: 'POST', body: payload, headers: { Origin: origin }, redirect: 'manual' });
+  assert.equal(throttled.status, 303);
+  assert.equal(new URL(throttled.headers.get('location')).searchParams.get('error'), 'rate_limit');
+  assert.equal(throttled.headers.get('retry-after'), '900');
+  assert.equal(throttled.headers.get('set-cookie'), null);
   console.log('HTTP smoke passed: login, spoofed headers, CSRF, catalog write, restart persistence, logout revocation.');
 } finally { await stop(); rmSync(directory, { recursive: true, force: true }); }

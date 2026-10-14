@@ -2,6 +2,7 @@
 @import 'tw-animate-css';
 @import '../vendor/shadcn-tailwind-4.13.0.css';
 @import './dashboard-tables.css';
+@import './workspace.css';
 @font-face{font-family:LineSeed;src:url('/fonts/LINESeedSansTH_W_Rg.woff2') format('woff2');font-weight:400;font-display:swap}
 @font-face{font-family:LineSeed;src:url('/fonts/LINESeedSansTH_W_Bd.woff2') format('woff2');font-weight:600 900;font-display:swap}
 :root{--background:#0b1020;--foreground:#edf1ff;--card:#131b30;--card-foreground:#edf1ff;--popover:#182137;--popover-foreground:#edf1ff;--primary:#b5a2ff;--primary-foreground:#191032;--secondary:#242e48;--secondary-foreground:#edf1ff;--muted:#1c263d;--muted-foreground:#a9b4ca;--accent:#2a3152;--accent-foreground:#f4f0ff;--destructive:#ff9caa;--border:#ffffff20;--input:#61718b;--ring:#bdadff;--radius:.8rem;--sidebar:#0c1121;--sidebar-foreground:#bdc7da;--sidebar-primary:#b5a2ff;--sidebar-primary-foreground:#191032;--sidebar-accent:#a892ff1c;--sidebar-accent-foreground:#d1c4ff;--sidebar-border:#ffffff15;--sidebar-ring:#b5a2ff}

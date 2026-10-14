@@ -14,10 +14,15 @@ export async function POST(req: Request) {
   const email = form.get('email')?.trim().toLowerCase();
   const password = form.get('password') || '';
   const db = getSqlite();
-  // Global account throttle deliberately does not trust visitor-supplied proxy headers.
+  // จำกัดความถี่ทั้งบัญชี โดยไม่เชื่อถือ proxy headers ที่ผู้เข้าชมส่งมา
   const window = Math.floor(Date.now() / 900000);
   const count = db.prepare('INSERT INTO auth_attempts(key,window,count) VALUES(?,?,1) ON CONFLICT(key) DO UPDATE SET count=CASE WHEN window=excluded.window THEN count+1 ELSE 1 END,window=excluded.window RETURNING count').get('admin', window) as { count: number };
-  if (count.count > 10) return new Response('พยายามเข้าสู่ระบบถี่เกินไป กรุณารอ 15 นาที', { status: 429, headers: { 'Retry-After': '900' } });
+  if (count.count > 10) {
+    const response = NextResponse.redirect(new URL('/login?error=rate_limit', origin), 303);
+    response.headers.set('Retry-After', '900');
+    response.headers.set('Cache-Control', 'no-store');
+    return response;
+  }
   const valid = await verifyPassword(password, process.env.ADMIN_PASSWORD_HASH);
   if (!valid || email !== process.env.ADMIN_EMAIL?.trim().toLowerCase()) return NextResponse.redirect(new URL('/login?error=1', origin), 303);
   if (!process.env.SESSION_SECRET) return new Response('Authentication unavailable', { status: 503 });
