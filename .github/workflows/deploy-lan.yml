@@ -42,6 +42,7 @@ jobs:
         shell: bash
         env:
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_READ_TOKEN: ${{ github.token }}
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
           DEPLOY_SSH_PORT: ${{ vars.DEPLOY_SSH_PORT }}
