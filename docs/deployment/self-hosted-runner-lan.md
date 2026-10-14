@@ -46,7 +46,7 @@ Runner ต้องเชื่อมต่อออก GitHub ผ่าน HTTP
 ## 2. เตรียม Linux Runner แยกจาก aaPanel
 
 ใช้ Linux x64 VM/mini PC ที่อยู่ใน VLAN สำหรับ Deployment โดยมี outbound HTTPS 443 ไป GitHub และเชื่อม SSH ถึง aaPanel Private IP
-ติดตั้ง git, bash, openssh-client, tar, coreutils และใช้งาน GitHub runner ด้วยบัญชีที่ไม่มีสิทธิ์ root
+ติดตั้ง git, bash, openssh-client, tar, curl, jq, coreutils และใช้งาน GitHub runner ด้วยบัญชีที่ไม่มีสิทธิ์ root
 
 ใน Settings > Actions > Runners ของ Repository/Organization เลือก New self-hosted runner แล้วใช้คำสั่งติดตั้ง **ที่ GitHub ออกให้ ณ เวลานั้น** (อย่าใช้ Registration Token ที่แชร์ในเอกสาร)
 กำหนด labels อย่างน้อย:
@@ -150,7 +150,7 @@ Workflow: [.github/workflows/deploy-lan.yml](../../.github/workflows/deploy-lan.
 1. Push ไป main -> Existing CI รันบน GitHub-hosted Ubuntu
 2. เมื่อ CI สำเร็จ และเป็น Push ของ Repository นี้ไป main (ไม่ใช่ PR/Fork/Manual CI) จึงสามารถ Queue Deploy
 3. หาก Repo ยัง Public งาน Deploy ถูก Skip
-4. Self-hosted Runner ตรวจ SHA ว่าตรงกับ CI และ main ล่าสุด เพื่อไม่ Deploy ผล CI ที่เก่าแล้ว
+4. Self-hosted Runner ตรวจ SHA ว่าตรงกับ CI และ main ล่าสุดผ่าน GitHub API ด้วย GITHUB_TOKEN ชั่วคราวที่มี contents:read (ไม่ Persist Credentials) เพื่อไม่ Deploy ผล CI ที่เก่าแล้ว
 5. ส่ง Git archive ของ Commit ที่ผ่าน CI ไปยัง Server ผ่าน SSH ภายใน LAN (Server ไม่ต้อง Git Pull หรือออก Internet)
 6. เตรียม Release ใหม่; Link .env/data/backups จาก shared; Backup SQLite แบบ online
 7. npm ci -> test:vps -> npm run build
