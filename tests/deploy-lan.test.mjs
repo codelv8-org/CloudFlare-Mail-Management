@@ -13,6 +13,8 @@ function attemptDeployment(overrides = {}) {
   const env = {
     ...process.env,
     DEPLOY_SHA: 'a'.repeat(40),
+    GITHUB_REPOSITORY: 'codelv8-org/CloudFlare-Mail-Management',
+    GH_READ_TOKEN: 'test-only-token',
     DEPLOY_HOST: '192.168.10.50',
     DEPLOY_USER: 'deploy',
     DEPLOY_SSH_PORT: '22',
