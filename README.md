@@ -57,6 +57,15 @@ npm run test:ui
 ภาพตรวจสอบจะอยู่ในโฟลเดอร์ชั่วคราวที่แสดงในผลการทดสอบ
 CRUD หมวดหมู่ตรวจด้วย API และ SQLite จริง ส่วน Cloudflare ใช้ข้อมูลจำลองสำหรับตรวจ UI โดยไม่เขียนบัญชีภายนอก
 
+## GitHub Actions
+
+Workflow [CI](.github/workflows/ci.yml) รันเมื่อ push, เปิดหรืออัปเดต pull request และสั่งเองผ่าน Actions → CI → Run workflow
+ใช้ Ubuntu 24.04 และ Node.js 24 พร้อม npm cache จาก `package-lock.json`
+
+ตรวจตามลำดับ: `npm ci` → `npm run lint` → `npm run test:vps` → `npm run build` → `npm run test:http` → `npm run test:ui`
+ติดตั้ง Playwright และ Chromium ในพื้นที่ชั่วคราวของ runner โดยไม่เพิ่ม dependency ของแอป
+ชุดทดสอบใช้ SQLite ชั่วคราวและข้อมูล Cloudflare จำลอง ไม่ต้องตั้ง GitHub Secrets และไม่มีขั้นตอน deploy
+
 ## ที่มาของโครงการ
 
 นำเข้าจาก Relaydesk บน ChatGPT Sites แล้วปรับ GitHub ให้ self-host ได้

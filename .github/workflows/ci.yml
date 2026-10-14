@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, tests and production build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      CI: 'true'
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test authentication, migrations and configuration
+        run: npm run test:vps
+
+      - name: Build production application
+        run: npm run build
+
+      - name: Test HTTP and SQLite persistence
+        run: npm run test:http
+
+      # Keep browser tooling outside the application dependency tree.
+      - name: Install Playwright and Chromium
+        env:
+          PLAYWRIGHT_TOOL_DIR: ${{ runner.temp }}/relaydesk-playwright
+        run: |
+          npm install --prefix "$PLAYWRIGHT_TOOL_DIR" --no-save --package-lock=false --ignore-scripts playwright@1.64.1
+          node "$PLAYWRIGHT_TOOL_DIR/node_modules/playwright/cli.js" install --with-deps chromium
+
+      - name: Test UI and responsive layouts
+        env:
+          PLAYWRIGHT_PACKAGE_PATH: ${{ runner.temp }}/relaydesk-playwright/node_modules/playwright/index.mjs
+        run: npm run test:ui
