@@ -12,10 +12,13 @@ die() { printf 'DEPLOY ERROR: %s\n' "$*" >&2; exit 1; }
 : "${DEPLOY_ROOT:?DEPLOY_ROOT is required}"
 : "${DEPLOY_SSH_KEY_FILE:?DEPLOY_SSH_KEY_FILE is required}"
 : "${DEPLOY_SSH_KNOWN_HOSTS:?DEPLOY_SSH_KNOWN_HOSTS is required}"
+: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
+: "${GH_READ_TOKEN:?GH_READ_TOKEN is required}"
 DEPLOY_HEALTH_URL="${DEPLOY_HEALTH_URL:-http://127.0.0.1:3000/api/health}"
 DEPLOY_NODE_BIN_DIR="${DEPLOY_NODE_BIN_DIR:-}"
 
 [[ "$DEPLOY_SHA" =~ ^[a-fA-F0-9]{40}$ ]] || die "DEPLOY_SHA must be a full Git commit SHA"
+[[ "$GITHUB_REPOSITORY" == "codelv8-org/CloudFlare-Mail-Management" ]] || die "Unexpected GitHub repository"
 [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]] || die "DEPLOY_HOST must be a LAN IP address or DNS hostname"
 [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]] || die "DEPLOY_USER must be a Linux account name"
 [[ "$DEPLOY_SSH_PORT" =~ ^[0-9]{1,5}$ ]] && (( 10#$DEPLOY_SSH_PORT >= 1 && 10#$DEPLOY_SSH_PORT <= 65535 )) || die "Invalid DEPLOY_SSH_PORT"
@@ -26,11 +29,14 @@ DEPLOY_NODE_BIN_DIR="${DEPLOY_NODE_BIN_DIR:-}"
 [[ -r "$DEPLOY_SSH_KNOWN_HOSTS" ]] || die "Pinned SSH known_hosts file is missing on the LAN runner"
 [[ -z "$(find "$DEPLOY_SSH_KEY_FILE" -maxdepth 0 -perm /077 -print)" ]] || die "SSH private key must not be accessible by group or others"
 
-for tool in git ssh tar; do command -v "$tool" >/dev/null || die "Missing LAN runner prerequisite: $tool"; done
+for tool in git ssh tar curl jq; do command -v "$tool" >/dev/null || die "Missing LAN runner prerequisite: $tool"; done
 [[ "$(git rev-parse HEAD)" == "$DEPLOY_SHA" ]] || die "Checked-out commit does not match the CI-verified commit"
 
 # If main advanced while CI ran, skip the stale result (a newer successful CI will deploy).
-current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+current_main="$(curl --fail --silent --show-error --retry 2 \
+  -H "Authorization: Bearer $GH_READ_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/heads/main" | jq -er '.object.sha')"
 if [[ "$current_main" != "$DEPLOY_SHA" ]]; then
   printf 'Skipping obsolete deployment: verified=%s current-main=%s\n' "$DEPLOY_SHA" "$current_main"
   exit 0
