@@ -1,10 +1,11 @@
-import { env } from 'cloudflare:workers';
+import { env, isSameOrigin } from '@/lib/server-env';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
 import { z } from 'zod';
 import { cf, listAll, AppError } from '@/lib/cloudflare';
 import { encrypt,decrypt,fingerprint } from '@/lib/crypto';
 import { defaults,catalogSchema,cfId,ruleSchema,annotationSchema,validateAction,validateAnnotation,type Catalog,type Rule,type Destination } from '@/lib/domain';
 export const dynamic='force-dynamic';
+export const runtime='nodejs';
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'}});
 function db(){if(!env.DB)throw new AppError(503,'พื้นที่จัดเก็บข้อมูลยังไม่พร้อม');return env.DB;}
 async function catalog(owner:string){const row=await db().prepare('SELECT data, revision FROM catalogs WHERE owner=?').bind(owner).first<{data:string;revision:number}>();return {data:row?JSON.parse(row.data) as Catalog:defaults,revision:row?.revision??0};}
@@ -16,9 +17,9 @@ async function audited<T>(owner:string,action:string,target:string,before:unknow
 async function limited(owner:string){const win=Math.floor(Date.now()/60000);const row=await db().prepare('INSERT INTO limits(owner,window,count) VALUES(?,?,1) ON CONFLICT(owner) DO UPDATE SET count=CASE WHEN window=excluded.window THEN count+1 ELSE 1 END, window=excluded.window RETURNING count').bind(owner,win).first<{count:number}>();if(!row||row.count>60)throw new AppError(429,'คำขอถี่เกินไป กรุณารอหนึ่งนาที');}
 async function readBody(req:Request){if(!req.headers.get('content-type')?.startsWith('application/json'))throw new AppError(415,'ต้องส่งข้อมูล JSON');if(Number(req.headers.get('content-length')??0)>300000)throw new AppError(413,'ข้อมูลใหญ่เกินไป');const text=await req.text();if(text.length>300000)throw new AppError(413,'ข้อมูลใหญ่เกินไป');try{return JSON.parse(text);}catch{throw new AppError(400,'JSON ไม่ถูกต้อง');}}
 async function handler(req:Request){try{
- const user=await getChatGPTUser();if(!user)return json({error:'กรุณาเข้าสู่ระบบด้วย ChatGPT'},401);const owner=user.userId;
+ const user=await getChatGPTUser();if(!user)return json({error:'กรุณาเข้าสู่ระบบ Relaydesk'},401);const owner=user.userId;
  const url=new URL(req.url);const route=url.pathname.replace(/^\/api\//,'');const write=req.method==='POST';
- if(write){if(req.headers.get('origin')!==url.origin||req.headers.get('x-relaydesk-request')!=='1')throw new AppError(403,'ไม่อนุญาตคำขอข้ามเว็บไซต์');}
+ if(write){if(!isSameOrigin(req)||req.headers.get('x-relaydesk-request')!=='1')throw new AppError(403,'ไม่อนุญาตคำขอข้ามเว็บไซต์');}
  await limited(owner);const body=write?await readBody(req):null;
  if(route==='state'&&!write){const row=await db().prepare('SELECT account,updated FROM connections WHERE owner=?').bind(owner).first();const c=await catalog(owner);return json({connection:row,catalog:c.data,revision:c.revision,secureStorage:!!env.TOKEN_ENCRYPTION_KEY});}
  if(route==='connection'&&write){
