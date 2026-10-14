@@ -66,6 +66,17 @@ Workflow [CI](.github/workflows/ci.yml) รันเมื่อ push, เปิ
 ติดตั้ง Playwright และ Chromium ในพื้นที่ชั่วคราวของ runner โดยไม่เพิ่ม dependency ของแอป
 ชุดทดสอบใช้ SQLite ชั่วคราวและข้อมูล Cloudflare จำลอง ไม่ต้องตั้ง GitHub Secrets และไม่มีขั้นตอน deploy
 
+## Auto Deploy ไป aaPanel ภายใน LAN
+
+มี Workflow [Deploy to LAN aaPanel](.github/workflows/deploy-lan.yml) สำหรับ **Private IP + Self-hosted Runner**
+โดยรอให้ GitHub-hosted CI ผ่านจากการ Push ไป main ก่อนส่ง Source ผ่าน SSH ใน LAN
+ใช้ release แยกจากกัน พร้อม SQLite online backup, PM2 restart, health check และ app-only rollback
+
+**Security gate:** Repository นี้ยังเป็น Public อยู่ จึงตั้งให้ขั้นตอน Deploy ถูก Skip จนกว่าจะเปลี่ยนเป็น Private
+และตั้ง Runner Group / branch protection / environment / SSH key / managed release directory ครบ
+ไม่มีการเปิด SSH ของ VPS สู่ Internet และการ Merge Workflow ไม่ได้เท่ากับการ Deploy ขึ้น Production
+
+อ่าน [คู่มือติดตั้ง Self-hosted Runner และ Auto Deploy ภาษาไทย](docs/deployment/self-hosted-runner-lan.md)
 ## ที่มาของโครงการ
 
 นำเข้าจาก Relaydesk บน ChatGPT Sites แล้วปรับ GitHub ให้ self-host ได้
