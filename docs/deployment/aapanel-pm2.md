@@ -1,5 +1,7 @@
 # ติดตั้ง Relaydesk บน VPS / aaPanel ด้วย PM2
 
+> คู่มือเวอร์ชันเดิมสำหรับ rollback เท่านั้น Release ปัจจุบันใช้ [PHP-FPM / MySQL](aapanel-php-mysql.md) ไฟล์และคำสั่ง Node/PM2 ด้านล่างอยู่ใน Git baseline ที่ระบุใน [legacy-runtime.md](../legacy-runtime.md)
+
 โค้ดใน GitHub ใช้ Next.js บน Node.js, SQLite ใน VPS และบัญชีผู้ดูแลหนึ่งบัญชี
 Cloudflare API Token ยังคงเข้ารหัสด้วย AES-GCM ก่อนเก็บในฐานข้อมูล
 ไม่ต้องมี Cloudflare D1 หรือ ChatGPT Sites เพื่อรันเวอร์ชันนี้

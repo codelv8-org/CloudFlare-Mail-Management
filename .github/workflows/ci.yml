@@ -14,12 +14,26 @@ concurrency:
 
 jobs:
   verify:
-    name: Lint, tests and production build
+    name: PHP, MySQL and browser verification
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      NEXT_TELEMETRY_DISABLED: '1'
       CI: 'true'
+      TEST_DB_PORT: '3306'
+      TEST_DB_USER: root
+      TEST_DB_PASSWORD: ci-test-only-password
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-test-only-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-test-only-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Check out source
@@ -31,33 +45,36 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '24'
-          cache: npm
-          cache-dependency-path: package-lock.json
+      - name: Install PHP 8.3 extensions
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y php8.3-cli php8.3-mysql php8.3-curl php8.3-mbstring
+          php -v
+          php -m
 
-      - name: Install locked dependencies
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test authentication, migrations and configuration
-        run: npm run test:vps
-
-      - name: Build production application
-        run: npm run build
-
-      - name: Test HTTP and SQLite persistence
-        run: npm run test:http
+      - name: Check browser JavaScript syntax
+        run: |
+          node --check public/assets/app.js
+          node --check public/assets/login.js
+          node --check tests/php-ui.mjs
 
       # Keep browser tooling outside the application dependency tree.
       - name: Install Playwright and Chromium
         env:
           PLAYWRIGHT_TOOL_DIR: ${{ runner.temp }}/relaydesk-playwright
         run: |
-          npm install --prefix "$PLAYWRIGHT_TOOL_DIR" --no-save --package-lock=false --ignore-scripts playwright@1.64.1
+          npm install --prefix "$PLAYWRIGHT_TOOL_DIR" --no-save --package-lock=false --ignore-scripts playwright@1.62.1
           node "$PLAYWRIGHT_TOOL_DIR/node_modules/playwright/cli.js" install --with-deps chromium
 
-      - name: Test UI and responsive layouts
+      - name: Test PHP, MySQL persistence, concurrency and UI
         env:
           PLAYWRIGHT_PACKAGE_PATH: ${{ runner.temp }}/relaydesk-playwright/node_modules/playwright/index.mjs
-        run: npm run test:ui
+        run: php scripts/verify.php --ui
+
+      - name: Preserve test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: php-mysql-browser-evidence
+          path: outputs/php-tests-*
+          if-no-files-found: ignore

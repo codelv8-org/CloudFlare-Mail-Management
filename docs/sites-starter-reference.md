@@ -1,5 +1,7 @@
 # vinext-starter
 
+> Historical source documentation only. This release runs PHP/MySQL. See [legacy-runtime.md](legacy-runtime.md) for the original Git baseline; the commands below do not apply to the current runtime.
+
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 
 ## Prerequisites

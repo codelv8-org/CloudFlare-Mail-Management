@@ -1,74 +1,81 @@
 # Relaydesk — Cloudflare Email Routing
 
-จัดการ Cloudflare Email Routing, อีเมลปลายทาง, Platform tags, กลุ่มผู้ใช้, Priority และประวัติการทำงาน
+จัดการ Cloudflare Email Routing, destinations, Platform tags, กลุ่มผู้ใช้, Priority และประวัติการทำงาน
 
-เวอร์ชัน GitHub นี้รันบน **VPS / aaPanel ด้วย PM2** ใช้ **Next.js + Node.js + SQLite**
-มีบัญชีผู้ดูแลและ session cookie ของตนเอง พร้อมเข้ารหัส Cloudflare API Token
+**HTML + PHP 8.3 + MySQL 8.0** — PHP ธรรมดา, PDO prepared statements และ Vanilla JavaScript ไม่มี Node.js/PM2/Composer ใน production runtime
 
 ## ติดตั้ง
 
-ดู [คู่มือติดตั้ง aaPanel / PM2 ภาษาไทย](docs/deployment/aapanel-pm2.md) สำหรับขั้นตอนครบตั้งแต่ clone จนถึง HTTPS, backup และ update
+ดู [คู่มือ aaPanel / PHP-FPM / MySQL](docs/deployment/aapanel-php-mysql.md) สำหรับ HTTPS, schema setup, backup และ rollback
 
-- Node.js 24 LTS
-- Startup: `scripts/start-production.mjs`
-- PM2: `ecosystem.config.cjs`
-- Environment: คัดลอก `.env.example` เป็น `.env` แล้วตั้งค่าก่อนเริ่มระบบ
-- ฐานข้อมูล: `data/relaydesk.sqlite` สร้างและ migrate อัตโนมัติเมื่อเริ่มระบบ
+1. สร้าง MySQL database ว่างและผู้ใช้เฉพาะฐานข้อมูล
+2. คัดลอก `.env.example` เป็น `.env` แล้วตั้ง `APP_URL`, บัญชีผู้ดูแล, keys และ MySQL configuration
+3. สร้าง schema ผ่าน CLI และตั้ง document root เป็น `public/`
 
 ```bash
-npm ci
-cp .env.example .env
-npm run auth:hash
-# ตั้งค่า .env ตามคู่มือ
-npm run db:migrate
-npm run test:vps
-npm run build
-pm2 start ecosystem.config.cjs
-pm2 save
+php scripts/setup.php password
+php scripts/setup.php key
+php scripts/setup.php key
+php scripts/setup.php check
+php scripts/setup.php migrate-dry-run
+php scripts/setup.php migrate
 ```
 
-## คำสั่ง
+PHP ต้องมี `pdo_mysql`, `curl`, `openssl`, `mbstring` และ Argon2id; runtime ไม่สร้าง schema อัตโนมัติ
+Password prompt ซ่อนรหัสผ่าน เก็บ hash และ keys ใน `.env` เท่านั้น
 
-| คำสั่ง | หน้าที่ |
-| --- | --- |
-| `npm run dev` | Next.js development บน loopback |
-| `npm run build` | Build สำหรับ production |
-| `npm start` | ตรวจ configuration, migrate SQLite และเปิด Next.js |
-| `npm run auth:hash` | สร้าง password hash โดยไม่แสดงรหัสผ่าน |
-| `npm run db:migrate` | ใช้ SQL migrations |
-| `npm run db:backup` | Online backup SQLite ไป backups/ |
-| `npm run test:vps` | ตรวจ auth, migration และ production configuration |
-
-Production ต้องใช้ HTTPS และ Nginx reverse proxy ไป `127.0.0.1:3000`
-Cloudflare API Token ใช้จากหน้าเชื่อมต่อ ไม่ต้องใส่ Token ใน source
-
-## ตรวจสอบ UI และการทำงาน
+Development ใช้ `APP_ENV=development`, `APP_URL=http://127.0.0.1:8080` และฐานข้อมูล local แยก
 
 ```bash
-npm run lint
-npm run test:vps
-npm run build
-npm run test:http
-npm run test:ui
+php -S 127.0.0.1:8080 -t public public/router.php
 ```
 
-`test:http` และ `test:ui` ใช้ SQLite ชั่วคราว ไม่แก้ฐานข้อมูลใช้งานจริง
-`test:ui` ต้องมี Playwright พร้อม Chromium ในเครื่อง หรือกำหนด `PLAYWRIGHT_PACKAGE_PATH` เป็นพาธไฟล์ `index.mjs` ของแพ็กเกจ Playwright ที่ติดตั้งไว้
-ภาพตรวจสอบจะอยู่ในโฟลเดอร์ชั่วคราวที่แสดงในผลการทดสอบ
-CRUD หมวดหมู่ตรวจด้วย API และ SQLite จริง ส่วน Cloudflare ใช้ข้อมูลจำลองสำหรับตรวจ UI โดยไม่เขียนบัญชีภายนอก
+Production ใช้ Nginx + PHP-FPM + HTTPS ตาม [nginx-php.conf](docs/deployment/nginx-php.conf) ไม่ใช้ PHP development server
 
-## GitHub Actions
+## ความสามารถ
 
-Workflow [CI](.github/workflows/ci.yml) รันเมื่อ push, เปิดหรืออัปเดต pull request และสั่งเองผ่าน Actions → CI → Run workflow
-ใช้ Ubuntu 24.04 และ Node.js 24 พร้อม npm cache จาก `package-lock.json`
+- บัญชีผู้ดูแลหนึ่งบัญชี, signed session cookie, session revocation, CSRF และ rate limits
+- Cloudflare User/Account Token verification และ AES-256-GCM encryption ผูก owner
+- Routing rules: forward/drop/worker, Catch-all, DNS และ Plus Addressing
+- CRUD หมวดหมู่แบบ modal, logo upload, bulk annotations, search/filter และ JSON audit export
+- Revision/fingerprint conflicts ป้องกัน stale writes, audit บันทึก pending/succeeded/failed/ผลที่ต้องตรวจอีกครั้ง
+- Responsive desktop/tablet/mobile พร้อม local LINE Seed Sans TH fonts
 
-ตรวจตามลำดับ: `npm ci` → `npm run lint` → `npm run test:vps` → `npm run build` → `npm run test:http` → `npm run test:ui`
-ติดตั้ง Playwright และ Chromium ในพื้นที่ชั่วคราวของ runner โดยไม่เพิ่ม dependency ของแอป
-ชุดทดสอบใช้ SQLite ชั่วคราวและข้อมูล Cloudflare จำลอง ไม่ต้องตั้ง GitHub Secrets และไม่มีขั้นตอน deploy
+## โครงสร้าง
 
-## ที่มาของโครงการ
+`public/` เป็น web root; `src/` แยก controllers, repositories และ services; `templates/` เป็น HTML/PHP; `database/` เป็น MySQL schema; `scripts/` เป็น CLI; `.env`, data, logs และ backups ต้องอยู่นอก web root
 
-นำเข้าจาก Relaydesk บน ChatGPT Sites แล้วปรับ GitHub ให้ self-host ได้
-ข้อมูล D1 และ secrets เดิมไม่ถูกย้ายอัตโนมัติ ดูข้อจำกัดการย้ายข้อมูลในคู่มือติดตั้ง
-ไฟล์ build/Vinext/Workers เดิมเก็บเพื่ออ้างอิง แต่ไม่ถูกใช้ใน VPS runtime
-ดู [เอกสาร starter เดิม](docs/sites-starter-reference.md) สำหรับประวัติของ source
+API คง `/api/state`, `/api/catalog`, `/api/connection`, `/api/zones`, `/api/zone`, `/api/rule`, `/api/destination`, `/api/annotations`, `/api/settings`, `/api/audit`, auth และ health ตาม contract เดิม
+
+## ตรวจสอบ
+
+ชุดทดสอบสร้างชื่อ database `relaydesk_test_*` ของตัวเองและลบเฉพาะฐานข้อมูลนั้นเมื่อจบ ต้องใช้ MySQL instance สำหรับทดสอบเท่านั้น ไม่อ่าน production `.env`
+
+```bash
+# Linux shell; เลือก port/user/password ของ MySQL instance ทดสอบ
+TEST_DB_PORT=33316 TEST_DB_USER=root php scripts/verify.php
+# รวม browser checks (ใช้ Playwright จาก tooling environment)
+TEST_DB_PORT=33316 TEST_DB_USER=root php scripts/verify.php --ui
+```
+
+```powershell
+$env:TEST_DB_PORT = '33316'
+$env:TEST_DB_USER = 'root'
+# หาก MySQL ทดสอบมีรหัสผ่าน กำหนด TEST_DB_PASSWORD ใน environment
+# หาก Playwright อยู่ภายนอก กำหนด PLAYWRIGHT_PACKAGE_PATH ไปยัง index.mjs
+php scripts/verify.php --ui
+```
+
+Browser tests ใช้ Node.js/Playwright เป็น QA tooling เท่านั้น ตั้ง `CHROMIUM_EXECUTABLE` ได้เมื่อ browser อยู่ภายนอก Screenshots และผลตรวจอยู่ใน `outputs/php-tests-*` ซึ่งไม่ commit
+
+Tests ตรวจ HTTP → PHP → MySQL persistence, auth, concurrent counters/revisions และ browser interaction; Cloudflare ใช้ fixtures ไม่มีการเขียนบัญชีจริง ไม่ใช่ production validation
+
+ผลตรวจและขอบเขตหลักฐานล่าสุดอยู่ใน [verification.md](docs/verification.md)
+
+GitHub Actions ใช้ PHP 8.3, MySQL 8.0 service และ Node.js เฉพาะ browser tooling ไม่มี deploy step
+
+## การเริ่มฐานข้อมูลใหม่และ rollback
+
+ไม่มี SQLite/D1 import ผู้ดูแลตั้งรหัสผ่านใหม่และเชื่อม Cloudflare ใหม่ Local catalogs, annotations และ audit เริ่มใหม่ กฎ Routing และ destinations ยังคงอยู่ใน Cloudflare
+
+Source/runtime เดิมอยู่ใน Git baseline `ebe53e86e1c8e643c2da5219566560b0cb8dd957` ดู [ขอบเขต rollback](docs/legacy-runtime.md) ห้ามลบ SQLite หรือเขียนทับ config เดิม การย้าย production ต้องมี backup และตรวจเป้าหมายแยกต่างหาก
